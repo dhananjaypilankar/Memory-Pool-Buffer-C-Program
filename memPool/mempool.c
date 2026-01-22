@@ -25,7 +25,20 @@
 #include "mempool.h"
 #include <string.h>
 
+/* **************************************************************************
+ *              Macros / Defines
+ ************************************************************************** */
 #define MEM_POOL_OFFSET(st, m)          ((size_t)&(((st *)0)->m))
+
+/* **************************************************************************
+ *              Static Constants
+ ************************************************************************** */
+static const unsigned long memCtxSize = sizeof(t_Mem);
+static const unsigned long memSectorCtxSize = sizeof(t_MemSect);
+
+/* **************************************************************************
+ *              Function Definitions
+ ************************************************************************** */
 
 /* **************************************************************************
  * Function initializes the memory section for future use
@@ -46,9 +59,9 @@ void *mempool_init(const void *const pMem, const unsigned long Size, const unsig
     // Size of each sector
     ((struct s_Mem *)p_mem)->Sec_Size = (unsigned long)SectSize;
     // Start of memory sector descriptors
-    ((struct s_Mem *)p_mem)->Mem_Desc_Start = (unsigned long)(((char *)p_mem) + sizeof(t_Mem));
+    ((struct s_Mem *)p_mem)->Mem_Desc_Start = (unsigned long)(((char *)p_mem) + memCtxSize);
     // Start of usable memory sectors
-    ((struct s_Mem *)p_mem)->Mem_Start = (unsigned long)(((char *)p_mem) + sizeof(t_Mem)) + (SectCnt + sizeof(t_MemSect));
+    ((struct s_Mem *)p_mem)->Mem_Start = (unsigned long)(((char *)p_mem) + memCtxSize) + (SectCnt * memSectorCtxSize);
     // Number of used sectors of usable memory
     ((struct s_Mem *)p_mem)->Total_Memory = (unsigned long)Size;
 
@@ -58,19 +71,19 @@ void *mempool_init(const void *const pMem, const unsigned long Size, const unsig
     {
         // Preparing sector headers
         // Resetting all the flags from all the sectors
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
         // Next sector start address is copied
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, pNext))) = ( (((sector * (index * 1)) + sizeof(t_Mem) + (sizeof(t_MemSect) * SectCnt)) >= Size) ?\
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pNext))) = ( (((sector * (index * 1)) + memCtxSize + (memSectorCtxSize * SectCnt)) >= Size) ?\
                                                                                                                                     ((unsigned long)(((char *)p_mem))) :\
-                                                                                                                                    ((unsigned long)(((char *)p_mem) + (sizeof(t_MemSect) * (index + 1)))) );
+                                                                                                                                    ((unsigned long)(((char *)p_mem) + (memSectorCtxSize * (index + 1)))) );
         // The buffer concatenated with NULL buffer
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
         // Usable memory start address for current sector
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) = (((unsigned long)((char *)p_mem)) + ((sector * index) + (sizeof(t_MemSect) * SectCnt)));
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) = (((unsigned long)((char *)p_mem)) + ((sector * index) + (memSectorCtxSize * SectCnt)));
         // Resetting the read index to 0
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
         // Resetting the write index to 0
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
     }
 
     (void)sector;
@@ -92,13 +105,13 @@ void *mempool_alloc(const void *const pMem)
 
     for(index = 0; index < sect_cnt; index++)
     {
-        if(*(((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) == MEMSECT_FLAGS_NONE)
+        if(*(((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) == MEMSECT_FLAGS_NONE)
         {
-            *((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_USED;
-            *((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
-            *((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
-            *((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
-            mem_ptr = (void *)(((unsigned long)((char *)mem_zero)) + (sizeof(t_MemSect) * index));
+            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_USED;
+            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
+            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+            mem_ptr = (void *)(((unsigned long)((char *)mem_zero)) + (memSectorCtxSize * index));
             break;
         }
     }
@@ -493,7 +506,7 @@ unsigned long mempool_sectUsed(const void *const pMem)
 
     for(index = 0; index < sect_cnt; index++)
     {
-        if(*(((unsigned long *)(((char *)mem_zero) + (sizeof(t_MemSect) * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) & MEMSECT_FLAGS_USED)
+        if(*(((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) & MEMSECT_FLAGS_USED)
         {
             // Sector in use
             used_sect_count += 1;
@@ -519,4 +532,3 @@ double mempool_activeSection(const void *const pMem)
 }
 
 /* End of mempool.c file */
-
