@@ -25,8 +25,14 @@
 #ifndef __MEM_POOL_H__
 #define __MEM_POOL_H__
 
+/* **************************************************************************
+ *              Macros / Defines
+ ************************************************************************** */
 #define MEM_POOL_ALIGN                  4
 
+/* **************************************************************************
+ *              Structures
+ ************************************************************************** */
 /* **************************************************************************
                 Memory Pool Description
             -------------------------------
@@ -72,6 +78,9 @@ typedef struct s_MemSect {  /* Sector Descriptor */
     unsigned long       WriteIndex;                     // Write index
 } t_MemSect;
 
+/* **************************************************************************
+ *              Memory Heap Declarations - Do not move this section
+ ************************************************************************** */
 #define MEM_POOL_NAME(Name)                             mem_##Name
 #define MEM_POOL_ADDR(Name)                             (char *)&mem_##Name
 #define MEM_POOL_SIZE(Name)                             (unsigned long)sizeof(MEM_POOL_NAME(Name))
@@ -84,6 +93,10 @@ typedef struct s_MemSect {  /* Sector Descriptor */
                                                             unsigned long mem_sect_##Name = Sectors;\
                                                             unsigned long mem_sect_size_##Name = Bytes;
 
+
+/* **************************************************************************
+ *              Global Function Proto-types
+ ************************************************************************** */
 
 /* **************************************************************************
  * Function initializes the memory section for future use
@@ -172,4 +185,3 @@ unsigned long mempool_sectUsed(const void *const pMem);
 double mempool_activeSection(const void *const pMem);
 
 #endif                  /* __MEM_POOL_H__ */
-
