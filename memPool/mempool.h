@@ -25,10 +25,29 @@
 #ifndef __MEM_POOL_H__
 #define __MEM_POOL_H__
 
+#include <limits.h>
+
 /* **************************************************************************
  *              Macros / Defines
  ************************************************************************** */
 #define MEM_POOL_ALIGN                  4
+
+#if ULONG_MAX > 4294967295uL
+    /* Code for 64-bit unsigned long */
+    #define MEM_POOL_LONG_SIZE          8
+#elif ULONG_MAX > 65535uL
+    /* Code for 32-bit unsigned long */
+    #define MEM_POOL_LONG_SIZE          4
+#else
+    /* Code for 16-bit unsigned long */
+    #define MEM_POOL_LONG_SIZE          2
+#endif
+
+#if MEM_POOL_LONG_SIZE > 4
+    typedef unsigned int mempool_uint_t;
+#else
+    typedef unsigned long mempool_uint_t;
+#endif
 
 /* **************************************************************************
  *              Structures
@@ -59,23 +78,23 @@
  ************************************************************************** */
 
 typedef struct s_Mem {      /* Memory Header */
-    unsigned long       Mem_Desc_Start;
-    unsigned long       Mem_Start;
-    unsigned long       Sec_Cnt;
-    unsigned long       Sec_Size;
-    unsigned long       Total_Memory;
+    mempool_uint_t       Mem_Desc_Start;
+    mempool_uint_t       Mem_Start;
+    mempool_uint_t       Sec_Cnt;
+    mempool_uint_t       Sec_Size;
+    mempool_uint_t       Total_Memory;
 } t_Mem;
 
 typedef struct s_MemSect {  /* Sector Descriptor */
-    unsigned long       Flags;
-        #define MEMSECT_FLAGS_NONE          0x00uL      // Buffer is free can be allocated for future use
-        #define MEMSECT_FLAGS_USED          0x01uL      // Buffer already allocated
-        #define MEMSECT_FLAGS_CONCAT        0x10uL      // Concatenated buffer i.e. data is divided in to multiple of them
-    struct s_MemSect    *pNext;                         // Linked list pointer
-    struct s_MemSect    *pConcat;                       // Next concatenation
-    void                *pMemSect;                      // Start of allocated memory
-    unsigned long       ReadIndex;                      // Read index
-    unsigned long       WriteIndex;                     // Write index
+    mempool_uint_t       Flags;
+        #define MEMSECT_FLAGS_NONE          0x00uL          // Buffer is free can be allocated for future use
+        #define MEMSECT_FLAGS_USED          0x01uL          // Buffer already allocated
+        #define MEMSECT_FLAGS_CONCAT        0x10uL          // Concatenated buffer i.e. data is divided in to multiple of them
+    struct s_MemSect    *pNext;                             // Linked list pointer
+    struct s_MemSect    *pConcat;                           // Next concatenation
+    void                *pMemSect;                          // Start of allocated memory
+    mempool_uint_t       ReadIndex;                         // Read index  
+    mempool_uint_t       WriteIndex;                        // Write index
 } t_MemSect;
 
 /* **************************************************************************
@@ -83,15 +102,15 @@ typedef struct s_MemSect {  /* Sector Descriptor */
  ************************************************************************** */
 #define MEM_POOL_NAME(Name)                             mem_##Name
 #define MEM_POOL_ADDR(Name)                             (char *)&mem_##Name
-#define MEM_POOL_SIZE(Name)                             (unsigned long)sizeof(MEM_POOL_NAME(Name))
+#define MEM_POOL_SIZE(Name)                             (mempool_uint_t)sizeof(MEM_POOL_NAME(Name))
 #define MEM_POOL_SECT_CNT(Name)                         mem_sect_##Name
 #define MEM_POOL_SECT_SIZE(Name)                        mem_sect_size_##Name
 #define MEM_POOL_CREATE(Name, Size)                     char Name[Size];
 #define MEM_POOL_DECLARE(Name, Sectors, Bytes)          MEM_POOL_CREATE( mem_##Name, ( ( ( (sizeof(t_Mem) +\
                                                                     ( Sectors * ( sizeof(t_MemSect) + Bytes ) ) ) + ( MEM_POOL_ALIGN - 1 ) ) ) &\
                                                                     ( ~( MEM_POOL_ALIGN - 1) ) ) ); \
-                                                            unsigned long mem_sect_##Name = Sectors;\
-                                                            unsigned long mem_sect_size_##Name = Bytes;
+                                                            mempool_uint_t mem_sect_##Name = Sectors;\
+                                                            mempool_uint_t mem_sect_size_##Name = Bytes;
 
 
 /* **************************************************************************
@@ -106,7 +125,7 @@ typedef struct s_MemSect {  /* Sector Descriptor */
  *  SectSize    ->  Size of memory sector fetched using MEM_POOL_SECT_SIZE(Name) macro
  * Returns the start address of the current initialized Heap.
  ************************************************************************** */
-void *mempool_init(const void *const pMem, const unsigned long Size, const unsigned long SectCnt, const unsigned long SectSize);
+void *mempool_init(const void *const pMem, const mempool_uint_t Size, const mempool_uint_t SectCnt, const mempool_uint_t SectSize);
 
 /* **************************************************************************
  * Function allocates the unallocated memory sector for the user
@@ -132,8 +151,8 @@ void mempool_free(const void *const pMemSect);
  *  ReadCount   ->  Number of bytes to be read
  * Returns the number of bytes copied to target buffer, zero if error
  ************************************************************************** */
-unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
-                                        const unsigned long TargetSize, const unsigned long ReadCount);
+mempool_uint_t mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
+                                        const mempool_uint_t TargetSize, const mempool_uint_t ReadCount);
 
 /* **************************************************************************
  * Function reads entire buffer data of data limited to size of Target Buffer
@@ -143,7 +162,7 @@ unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
  *  TargetSize  ->  Size of the target buffer
  * Returns the number of bytes copied to target buffer, zero if error
  ************************************************************************** */
-unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const unsigned long TargetSize);
+mempool_uint_t mempool_readFull(const void *const pMemSect, void *pTarget, const mempool_uint_t TargetSize);
 
 /* **************************************************************************
  * Function writes data to allocated buffer or adds data to new buffer allocation
@@ -153,8 +172,8 @@ unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const 
  *  SrcSize     ->  Length of the data to be written
  * Returns number of bytes written to the memory sector.
  ************************************************************************** */
-unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMemSect,\
-                                    const char *const pSource, const unsigned long SrcSize);
+mempool_uint_t mempool_writeToIndex(const void *const pMem, const void *const pMemSect,\
+                                    const char *const pSource, const mempool_uint_t SrcSize);
 
 /* **************************************************************************
  * Function resets write and read pointers of the allocated memory
@@ -168,14 +187,14 @@ void mempool_resetMemory(const void *const pMemSect);
  *  pMemSect    ->  Pointer to memory sector start descriptor
  * Returns number of bytes can be read by next read instruction.
  ************************************************************************** */
-unsigned long mempool_availableData(const void *const pMemSect);
+mempool_uint_t mempool_availableData(const void *const pMemSect);
 
 /* **************************************************************************
  * Function counts number of used memory sectors
  *  pMem        ->  Pointer to the top of Heap memory fetched using MEM_POOL_ADDR(Name) macro
  * Returns currently allocated sectors.
  ************************************************************************** */
-unsigned long mempool_sectUsed(const void *const pMem);
+mempool_uint_t mempool_sectUsed(const void *const pMem);
 
 /* **************************************************************************
  * Function responds with percentage of memory used out of allocated on RAM
