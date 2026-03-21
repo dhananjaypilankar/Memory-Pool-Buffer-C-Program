@@ -33,8 +33,8 @@
 /* **************************************************************************
  *              Static Constants
  ************************************************************************** */
-static const unsigned long memCtxSize = sizeof(t_Mem);
-static const unsigned long memSectorCtxSize = sizeof(t_MemSect);
+static const mempool_uint_t memCtxSize = sizeof(t_Mem);
+static const mempool_uint_t memSectorCtxSize = sizeof(t_MemSect);
 
 /* **************************************************************************
  *              Function Definitions
@@ -48,42 +48,47 @@ static const unsigned long memSectorCtxSize = sizeof(t_MemSect);
  *  SectSize    ->  Size of memory sector fetched using MEM_POOL_SECT_SIZE(Name) macro
  * Returns the start address of the current initialized Heap.
  ************************************************************************** */
-void *mempool_init(const void *const pMem, const unsigned long Size, const unsigned long SectCnt, const unsigned long SectSize)
+void *mempool_init(const void *const pMem, const mempool_uint_t Size, const mempool_uint_t SectCnt, const mempool_uint_t SectSize)
 {
     void *p_mem = (void *)pMem;
-    unsigned long sector = SectSize;
-    unsigned long index = 0;
+    mempool_uint_t sector = SectSize;
+    mempool_uint_t index = 0;
+
+    if((p_mem == NULL) || (Size == 0) || (SectCnt == 0) || (SectSize == 0))
+    {
+        // Invalid arguments
+        return NULL;
+    }
 
     // Number of sectors of memory
-    ((struct s_Mem *)p_mem)->Sec_Cnt = (unsigned long)SectCnt;
+    ((struct s_Mem *)p_mem)->Sec_Cnt = (mempool_uint_t)SectCnt;
     // Size of each sector
-    ((struct s_Mem *)p_mem)->Sec_Size = (unsigned long)SectSize;
+    ((struct s_Mem *)p_mem)->Sec_Size = (mempool_uint_t)SectSize;
     // Start of memory sector descriptors
-    ((struct s_Mem *)p_mem)->Mem_Desc_Start = (unsigned long)(((char *)p_mem) + memCtxSize);
+    ((struct s_Mem *)p_mem)->Mem_Desc_Start = (mempool_uint_t)(((char *)p_mem) + memCtxSize);
     // Start of usable memory sectors
-    ((struct s_Mem *)p_mem)->Mem_Start = (unsigned long)(((char *)p_mem) + memCtxSize) + (SectCnt * memSectorCtxSize);
+    ((struct s_Mem *)p_mem)->Mem_Start = (mempool_uint_t)(((char *)p_mem) + memCtxSize) + (SectCnt * memSectorCtxSize);
     // Number of used sectors of usable memory
-    ((struct s_Mem *)p_mem)->Total_Memory = (unsigned long)Size;
-
-    p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_Mem, Mem_Desc_Start))));
+    ((struct s_Mem *)p_mem)->Total_Memory = (mempool_uint_t)Size;
+    p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_Mem, Mem_Desc_Start))));
 
     for(index = 0; index < SectCnt; index++)
     {
         // Preparing sector headers
         // Resetting all the flags from all the sectors
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
         // Next sector start address is copied
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pNext))) = ( (((sector * (index * 1)) + memCtxSize + (memSectorCtxSize * SectCnt)) >= Size) ?\
-                                                                                                                                    ((unsigned long)(((char *)p_mem))) :\
-                                                                                                                                    ((unsigned long)(((char *)p_mem) + (memSectorCtxSize * (index + 1)))) );
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pNext))) = ( (((sector * (index + 1)) + memCtxSize + (memSectorCtxSize * SectCnt)) >= Size) ?\
+                                                                                                                                    ((mempool_uint_t)(((char *)p_mem))) :\
+                                                                                                                                    ((mempool_uint_t)(((char *)p_mem) + (memSectorCtxSize * (index + 1)))) );
         // The buffer concatenated with NULL buffer
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
         // Usable memory start address for current sector
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) = (((unsigned long)((char *)p_mem)) + ((sector * index) + (memSectorCtxSize * SectCnt)));
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) = (((mempool_uint_t)((char *)p_mem)) + ((sector * index) + (memSectorCtxSize * SectCnt)));
         // Resetting the read index to 0
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
         // Resetting the write index to 0
-        *((unsigned long *)(((unsigned long)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+        *((mempool_uint_t *)(((mempool_uint_t)((char *)p_mem)) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
     }
 
     (void)sector;
@@ -98,20 +103,29 @@ void *mempool_init(const void *const pMem, const unsigned long Size, const unsig
  ************************************************************************** */
 void *mempool_alloc(const void *const pMem)
 {
-    unsigned long index = 0;
-    unsigned long sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
-    void *mem_zero = (void *)((struct s_Mem *)pMem)->Mem_Desc_Start;
+    mempool_uint_t index = 0;
+    mempool_uint_t sect_cnt = 0;
+    void *mem_zero = NULL;
     void *mem_ptr = NULL;
+
+    if(pMem == NULL)
+    {
+        // Invalid memory pointer
+        return (void *)pMem;
+    }
+
+    sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
+    mem_zero = (void *)((struct s_Mem *)pMem)->Mem_Desc_Start;
 
     for(index = 0; index < sect_cnt; index++)
     {
-        if(*(((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) == MEMSECT_FLAGS_NONE)
+        if(*(((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) == MEMSECT_FLAGS_NONE)
         {
-            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_USED;
-            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
-            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
-            *((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
-            mem_ptr = (void *)(((unsigned long)((char *)mem_zero)) + (memSectorCtxSize * index));
+            *((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_USED;
+            *((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = 0uL;
+            *((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+            *((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+            mem_ptr = (void *)(((mempool_uint_t)((char *)mem_zero)) + (memSectorCtxSize * index));
             break;
         }
     }
@@ -129,8 +143,8 @@ void *mempool_alloc(const void *const pMem)
  ************************************************************************** */
 void mempool_free(const void *const pMemSect)
 {
-    unsigned long flags;
-    unsigned long sect_buf_size = 0;
+    mempool_uint_t flags = MEMSECT_FLAGS_NONE;
+    mempool_uint_t sect_buf_size = 0;
     void *p_mem = (void *)pMemSect;
 
     if(p_mem != NULL)
@@ -140,16 +154,16 @@ void mempool_free(const void *const pMemSect)
 
     while(flags != MEMSECT_FLAGS_NONE)
     {
-        flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
-        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
-        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
-        sect_buf_size = ((unsigned long)(((t_MemSect *)*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext))))->pMemSect)) -\
-                        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+        flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags))) = MEMSECT_FLAGS_NONE;
+        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+        sect_buf_size = ((mempool_uint_t)(((t_MemSect *)*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext))))->pMemSect)) -\
+                        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
         
         if(flags & MEMSECT_FLAGS_CONCAT)
         {
-            p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+            p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
         }
         else
         {
@@ -168,35 +182,40 @@ void mempool_free(const void *const pMemSect)
  *  ReadCount   ->  Number of bytes to be read
  * Returns the number of bytes copied to target buffer, zero if error
  ************************************************************************** */
-unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
-                                        const unsigned long TargetSize, const unsigned long ReadCount)
+mempool_uint_t mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
+                                        const mempool_uint_t TargetSize, const mempool_uint_t ReadCount)
 {
     void *p_mem = (void *)pMemSect;
     void *p_read = NULL;
     void *p_head = p_mem;
     void *p_out = pTarget;
-    unsigned long bytes_read = 0;
-    unsigned long read_index = 0;
-    unsigned long write_index = 0;
-    unsigned long sect_buf_size = 0;
-    unsigned long flags = 0;
-    unsigned long read_processed = ReadCount;
-    unsigned long read_count = 0;
+    mempool_uint_t bytes_read = 0;
+    mempool_uint_t read_index = 0;
+    mempool_uint_t write_index = 0;
+    mempool_uint_t sect_buf_size = 0;
+    mempool_uint_t flags = 0;
+    mempool_uint_t read_processed = ReadCount;
+    mempool_uint_t read_count = 0;
 
-    if(read_processed > *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
+    if(p_mem == NULL)
     {
-        read_processed = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) -\
-                            *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
+        return read_count;
+    }
+
+    if(read_processed > *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
+    {
+        read_processed = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) -\
+                            *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
     }
 
     if((p_mem != NULL) && (pTarget != NULL))
     {
         // Get Read Pointer
-        flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-        read_index = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
-        write_index = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
-        sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+        flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+        read_index = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
+        write_index = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
+        sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
         
         if(read_index >= write_index)
         {
@@ -209,20 +228,20 @@ unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
             if(flags & MEMSECT_FLAGS_CONCAT)
             {
                 read_index -= sect_buf_size;
-                p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+                p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
             }
-            flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-            sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                            *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+            flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+            sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                            *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
         }
         // Read data sector by sector
         while(read_processed > 0)
         {
             bytes_read = 0;
-            flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-            p_read = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) + read_index);
-            sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                            *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+            flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+            p_read = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect))) + read_index);
+            sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                            *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
             
             if(TargetSize < read_processed)
             {
@@ -252,14 +271,14 @@ unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
             }
 
             memcpy(p_out, p_read, bytes_read);
-            *((unsigned long *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) += bytes_read;
+            *((mempool_uint_t *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) += bytes_read;
             read_processed -= bytes_read;
             read_count += bytes_read;
-            p_out = (void *)((unsigned long)((char *)p_out + bytes_read));
+            p_out = (void *)((mempool_uint_t)((char *)p_out + bytes_read));
 
             if(flags & MEMSECT_FLAGS_CONCAT)
             {
-                p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+                p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
             }
             else
             {
@@ -271,8 +290,8 @@ unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
                 break;
             }
 
-            if(*((unsigned long *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) >=\
-                *((unsigned long *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
+            if(*((mempool_uint_t *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) >=\
+                *((mempool_uint_t *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
             {
                 // Read completed
                 break;
@@ -296,21 +315,26 @@ unsigned long mempool_readFromIndex(const void *const pMemSect, void *pTarget,\
  *  TargetSize  ->  Size of the target buffer
  * Returns the number of bytes copied to target buffer, zero if error
  ************************************************************************** */
-unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const unsigned long TargetSize)
+mempool_uint_t mempool_readFull(const void *const pMemSect, void *pTarget, const mempool_uint_t TargetSize)
 {
     void *p_mem = (void *)pMemSect;
     void *p_read = NULL;
     void *p_out = pTarget;
-    unsigned long bytes_read = 0;
-    unsigned long sect_buf_size = 0;
-    unsigned long flags = 0;
-    unsigned long data_present = 1;
-    unsigned long read_processed = TargetSize;
-    unsigned long read_count = 0;
+    mempool_uint_t bytes_read = 0;
+    mempool_uint_t sect_buf_size = 0;
+    mempool_uint_t flags = 0;
+    mempool_uint_t data_present = 1;
+    mempool_uint_t read_processed = TargetSize;
+    mempool_uint_t read_count = 0;
 
-    if(read_processed > *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
+    if(p_mem == NULL)
     {
-        read_processed = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
+        return read_count;
+    }
+
+    if(read_processed > *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))))
+    {
+        read_processed = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
     }
 
     if(read_processed == 0)
@@ -323,10 +347,10 @@ unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const 
     {
         while(data_present == 1)
         {
-            flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-            p_read = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect))));
-            sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                            *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+            flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+            p_read = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect))));
+            sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                            *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
             
             if(read_processed < sect_buf_size)
             {
@@ -348,7 +372,7 @@ unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const 
             read_count += bytes_read;
             if(flags & MEMSECT_FLAGS_CONCAT)
             {
-                p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+                p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
             }
             else
             {
@@ -360,7 +384,7 @@ unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const 
             }
             else
             {
-                p_out = (void *)((unsigned long)((char *)p_out + bytes_read));
+                p_out = (void *)((mempool_uint_t)((char *)p_out + bytes_read));
             }
         }
     }
@@ -380,51 +404,51 @@ unsigned long mempool_readFull(const void *const pMemSect, void *pTarget, const 
  *  SrcSize     ->  Length of the data to be written
  * Returns number of bytes written to the memory sector.
  ************************************************************************** */
-unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMemSect,\
-                                    const char *const pSource, const unsigned long SrcSize)
+mempool_uint_t mempool_writeToIndex(const void *const pMem, const void *const pMemSect,\
+                                    const char *const pSource, const mempool_uint_t SrcSize)
 {
     void *p_mem = (void *)pMemSect;
     void *p_head = p_mem;
     void *p_write = NULL;
     void *p_next = NULL;
     void *p_src = (void *)pSource;
-    unsigned long write_index = 0;
-    unsigned long flags = 0;
-    unsigned long sect_buf_size = 0;
-    unsigned long write_processed = SrcSize;
-    unsigned long bytes_to_write = 0;
-    unsigned long write_count = 0;
+    mempool_uint_t write_index = 0;
+    mempool_uint_t flags = 0;
+    mempool_uint_t sect_buf_size = 0;
+    mempool_uint_t write_processed = SrcSize;
+    mempool_uint_t bytes_to_write = 0;
+    mempool_uint_t write_count = 0;
 
     if((p_mem != NULL) && (pSource != NULL))
     {
-        flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-        write_index = *((unsigned long *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
-        sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                            *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+        flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+        write_index = *((mempool_uint_t *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex)));
+        sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                            *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
         
         while((write_index > sect_buf_size) && (write_processed != 0))
         {
             if(flags & MEMSECT_FLAGS_CONCAT)
             {
                 write_index -= sect_buf_size;
-                p_mem = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+                p_mem = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
             }
-            flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-            sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                                *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+            flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+            sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                                *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
         }
 
         write_count = 0;
         while(write_processed > 0)
         {
-            flags = *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
-            p_write = (void *)((*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)))) + write_index);
-            sect_buf_size = ((unsigned long)(((t_MemSect *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
-                                *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
+            flags = *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags)));
+            p_write = (void *)((*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)))) + write_index);
+            sect_buf_size = ((mempool_uint_t)(((t_MemSect *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pNext)))))->pMemSect)) -\
+                                *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pMemSect)));
             
             if((signed long)(write_processed - (sect_buf_size - write_index)) > 0)
             {
-                if((((unsigned long)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))))) == 0uL) &&\
+                if((((mempool_uint_t)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))))) == 0uL) &&\
                     (write_processed > (sect_buf_size - write_index)))
                 {
                     // New sector allocation needed
@@ -432,8 +456,8 @@ unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMe
                     if(p_next != NULL)
                     {
                         // Memory Pool Allocation successful
-                        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags))) |= MEMSECT_FLAGS_CONCAT;
-                        *((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = (unsigned long)p_next;
+                        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, Flags))) |= MEMSECT_FLAGS_CONCAT;
+                        *((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))) = (mempool_uint_t)p_next;
                     }
                     else
                     {
@@ -443,7 +467,7 @@ unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMe
                 }
                 else
                 {
-                    p_next = (void *)(*((unsigned long *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
+                    p_next = (void *)(*((mempool_uint_t *)(((char *)p_mem) + MEM_POOL_OFFSET(t_MemSect, pConcat))));
                 }
 
                 if((sect_buf_size - write_index) > write_processed)
@@ -464,8 +488,8 @@ unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMe
             memcpy(p_write, p_src, bytes_to_write);
             write_processed -= bytes_to_write;
             write_count += bytes_to_write;
-            *((unsigned long *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) += bytes_to_write;
-            p_src = (void *)((unsigned long)(((char *)p_src + bytes_to_write)));
+            *((mempool_uint_t *)(((char *)p_head) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) += bytes_to_write;
+            p_src = (void *)((mempool_uint_t)(((char *)p_src + bytes_to_write)));
             p_mem = (void *)p_next;
             write_index = 0;
         }
@@ -486,8 +510,11 @@ unsigned long mempool_writeToIndex(const void *const pMem, const void *const pMe
  ************************************************************************** */
 void mempool_resetMemory(const void *const pMemSect)
 {
-    *((unsigned long *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
-    *((unsigned long *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+    if(pMemSect != NULL)
+    {
+        *((mempool_uint_t *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, ReadIndex))) = 0uL;
+        *((mempool_uint_t *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) = 0uL;
+    }
 }
 
 /* **************************************************************************
@@ -495,10 +522,14 @@ void mempool_resetMemory(const void *const pMemSect)
  *  pMemSect    ->  Pointer to memory sector start descriptor
  * Returns number of bytes can be read by next read instruction.
  ************************************************************************** */
-unsigned long mempool_availableData(const void *const pMemSect)
+mempool_uint_t mempool_availableData(const void *const pMemSect)
 {
-    return *((unsigned long *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) -\
-                *((unsigned long *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
+    if(pMemSect == NULL)
+    {
+        return 0uL;
+    }
+    return *((mempool_uint_t *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, WriteIndex))) -\
+                *((mempool_uint_t *)(((char *)pMemSect) + MEM_POOL_OFFSET(t_MemSect, ReadIndex)));
 }
 
 /* **************************************************************************
@@ -506,16 +537,16 @@ unsigned long mempool_availableData(const void *const pMemSect)
  *  pMem        ->  Pointer to the top of Heap memory fetched using MEM_POOL_ADDR(Name) macro
  * Returns currently allocated sectors.
  ************************************************************************** */
-unsigned long mempool_sectUsed(const void *const pMem)
+mempool_uint_t mempool_sectUsed(const void *const pMem)
 {
-    unsigned long index = 0;
-    unsigned long sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
-    unsigned long used_sect_count = 0;
+    mempool_uint_t index = 0;
+    mempool_uint_t sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
+    mempool_uint_t used_sect_count = 0;
     void *mem_zero = (void *)((struct s_Mem *)pMem)->Mem_Desc_Start;
 
     for(index = 0; index < sect_cnt; index++)
     {
-        if(*(((unsigned long *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) & MEMSECT_FLAGS_USED)
+        if(*(((mempool_uint_t *)(((char *)mem_zero) + (memSectorCtxSize * index) + MEM_POOL_OFFSET(t_MemSect, Flags)))) & MEMSECT_FLAGS_USED)
         {
             // Sector in use
             used_sect_count += 1;
@@ -534,9 +565,9 @@ unsigned long mempool_sectUsed(const void *const pMem)
  ************************************************************************** */
 double mempool_activeSection(const void *const pMem)
 {
-    unsigned long total_size = ((struct s_Mem *)pMem)->Total_Memory;
-    unsigned long sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
-    unsigned long sect_size = ((struct s_Mem *)pMem)->Sec_Size;
+    mempool_uint_t total_size = ((struct s_Mem *)pMem)->Total_Memory;
+    mempool_uint_t sect_cnt = ((struct s_Mem *)pMem)->Sec_Cnt;
+    mempool_uint_t sect_size = ((struct s_Mem *)pMem)->Sec_Size;
     return (((((double)(sect_cnt * sect_size)) * 100.0) / (double)total_size));
 }
 
